@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 
 	"fmt"
@@ -45,6 +46,8 @@ func main() {
 
 	j, _ := json.MarshalIndent(teams, "", "\t")
 	fmt.Println(string(j))
+
+	os.WriteFile("data.json", j, 0644)
 
 }
 

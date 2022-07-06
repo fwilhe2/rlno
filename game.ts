@@ -93,19 +93,56 @@ const results = matches.map(m => playMatch(m))
 fs.writeFileSync('match-results.json', JSON.stringify(results, null, 4))
 
 interface Standing {
-
     team: string
-    points: Number
+    points: number
+    matchesPlayed: number
+    goals: number
+    goalsAgainst: number
+
 }
 
 function calculateStandings(matchResults: Array<GameResult>): Array<Standing> {
-    return teams.map(t => { return { team: t.Name, points: calculateStandingsForTeam(t.Name, matchResults) } }).sort((a, b) => b.points - a.points)
+    return teams.map(t => {
+        return {
+            team: t.Name,
+            matchesPlayed: normalizeMatchResultsForTeam(t.Name, matchResults).length,
+            points: calculatePointsForTeam(t.Name, matchResults),
+            goals: normalizeMatchResultsForTeam(t.Name, matchResults).map(x => x.goals).reduce((prev, curr) => prev + curr, 0),
+            goalsAgainst: normalizeMatchResultsForTeam(t.Name, matchResults).map(x => x.goalsAgainst).reduce((prev, curr) => prev + curr, 0)
+        }
+    })
+        .sort((a, b) => b.points - a.points)
 }
 
-function calculateStandingsForTeam(team: string, matchResults: Array<GameResult>) {
-    return matchResults.filter(m => m.homeTeam == team).filter(m => m.homeGoals > m.awayGoals).length * 3 +
-        matchResults.filter(m => m.awayTeam == team).filter(m => m.awayGoals > m.homeGoals).length * 3 +
-        matchResults.filter(m => m.homeTeam == team || m.awayTeam == team).filter(m => m.homeGoals === m.awayGoals).length * 1
+function calculatePointsForTeam(team: string, matchResults: Array<GameResult>): number {
+    const resultsForTeam = normalizeMatchResultsForTeam(team, matchResults)
+    return resultsForTeam.filter(m => m.goals > m.goalsAgainst).length * 3 +
+        resultsForTeam.filter(m => m.goals === m.goalsAgainst).length * 1
+
+}
+
+interface NormalizedMatchResult {
+    team: string
+    goals: number
+    goalsAgainst: number
+}
+
+function normalizeMatchResultsForTeam(team: string, matchResults: Array<GameResult>): Array<NormalizedMatchResult> {
+    return matchResults.filter(m => m.homeTeam == team).map(m => {
+        return {
+            team: team,
+            goals: m.homeGoals,
+            goalsAgainst: m.awayGoals
+        }
+    }).concat(
+        matchResults.filter(m => m.awayTeam == team).map(m => {
+            return {
+                team: team,
+                goals: m.awayGoals,
+                goalsAgainst: m.homeGoals
+            }
+        })
+    )
 }
 
 const standings = calculateStandings(results)

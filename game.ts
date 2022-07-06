@@ -36,11 +36,6 @@ interface MatchData {
 
 const teams: Array<Team> = JSON.parse(fs.readFileSync("data.json").toString())
 
-const game: MatchData = {
-    homeTeam: teams[0],
-    awayTeam: teams[9]
-}
-
 class Match {
     homeTeam: Team
     awayTeam: Team
@@ -54,9 +49,7 @@ class Match {
 function calculateMatchesForSeason(teams: Array<Team>): Array<Match> {
     return teams.flatMap(t => {
         return teams.filter(tt => tt != t).map(ttt => new Match(t, ttt))
-
     })
-
 }
 
 function playMatch(game: Match): GameResult {
@@ -86,8 +79,6 @@ function playMatch(game: Match): GameResult {
     return result
 }
 
-// console.log(playMatch(game))
-
 const matches = calculateMatchesForSeason(teams)
 const results = matches.map(m => playMatch(m))
 fs.writeFileSync('match-results.json', JSON.stringify(results, null, 4))
@@ -103,12 +94,13 @@ interface Standing {
 
 function calculateStandings(matchResults: Array<GameResult>): Array<Standing> {
     return teams.map(t => {
+        const resultsForTeam = normalizeMatchResultsForTeam(t.Name, matchResults)
         return {
             team: t.Name,
-            matchesPlayed: normalizeMatchResultsForTeam(t.Name, matchResults).length,
+            matchesPlayed: resultsForTeam.length,
             points: calculatePointsForTeam(t.Name, matchResults),
-            goals: normalizeMatchResultsForTeam(t.Name, matchResults).map(x => x.goals).reduce((prev, curr) => prev + curr, 0),
-            goalsAgainst: normalizeMatchResultsForTeam(t.Name, matchResults).map(x => x.goalsAgainst).reduce((prev, curr) => prev + curr, 0)
+            goals: resultsForTeam.map(x => x.goals).reduce((prev, curr) => prev + curr, 0),
+            goalsAgainst: resultsForTeam.map(x => x.goalsAgainst).reduce((prev, curr) => prev + curr, 0)
         }
     })
         .sort((a, b) => b.points - a.points)
@@ -118,7 +110,6 @@ function calculatePointsForTeam(team: string, matchResults: Array<GameResult>): 
     const resultsForTeam = normalizeMatchResultsForTeam(team, matchResults)
     return resultsForTeam.filter(m => m.goals > m.goalsAgainst).length * 3 +
         resultsForTeam.filter(m => m.goals === m.goalsAgainst).length * 1
-
 }
 
 interface NormalizedMatchResult {
@@ -127,6 +118,7 @@ interface NormalizedMatchResult {
     goalsAgainst: number
 }
 
+// allow easy calculation of goals/points per team
 function normalizeMatchResultsForTeam(team: string, matchResults: Array<GameResult>): Array<NormalizedMatchResult> {
     return matchResults.filter(m => m.homeTeam == team).map(m => {
         return {
